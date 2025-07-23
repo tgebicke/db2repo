@@ -37,20 +37,21 @@
 **Priority:** High  
 **Status:** ✅ **COMPLETED** - Environment tested and working on macOS
 
-### Story 1.3: Implement Basic CLI Framework
+### Story 1.3: Implement Basic CLI Framework ✅ **COMPLETED**
 **As a** developer  
 **I want** a basic CLI structure with Click  
 **So that** I can start building commands
 
 **Acceptance Criteria:**
-- [ ] Install and configure Click framework
-- [ ] Create main CLI group with help text
-- [ ] Implement basic command structure
-- [ ] Add version command
-- [ ] Test CLI installation and basic functionality
+- [x] Install and configure Click framework
+- [x] Create main CLI group with help text
+- [x] Implement basic command structure
+- [x] Add version command
+- [x] Test CLI installation and basic functionality
 
 **Story Points:** 3  
-**Priority:** High
+**Priority:** High  
+**Status:** ✅ **COMPLETED** - CLI tested and working with version and help commands
 
 ---
 
@@ -490,7 +491,7 @@
 ### Sprint 1 (MVP Core)
 - ✅ Story 1.1: Initialize Project Structure **(COMPLETED)**
 - ✅ Story 1.2: Set Up Development Environment **(COMPLETED)**
-- Story 1.3: Implement Basic CLI Framework
+- ✅ Story 1.3: Implement Basic CLI Framework **(COMPLETED)**
 - Story 2.1: Create Configuration Management Module
 - Story 2.2: Implement Profile Management Commands
 
