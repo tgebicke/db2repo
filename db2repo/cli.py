@@ -13,6 +13,7 @@ from rich.panel import Panel
 from . import __version__
 from .config import ConfigManager
 from .exceptions import ConfigurationError
+from .git.manager import GitManager
 
 console = Console()
 
@@ -219,6 +220,36 @@ def setup(profile: str) -> None:
                 "git_author_email": git_author_email,
             }
         )
+
+        # Validate or initialize git repository
+        if not GitManager.is_git_repository(git_repo_path):
+            if git_remote_url:
+                console.print(
+                    f"[yellow]The path '{git_repo_path}' is not a git repository.[/yellow]"
+                )
+                console.print(
+                    "Cloning from remote is not yet implemented. Please clone manually and rerun setup."
+                )
+                raise click.Abort()
+            else:
+                if click.confirm(
+                    f"The path '{git_repo_path}' is not a git repository. Initialize a new git repo here?"
+                ):
+                    success = GitManager.initialize_repository(git_repo_path)
+                    if success:
+                        console.print(
+                            f"[green]Initialized new git repository at {git_repo_path}.[/green]"
+                        )
+                    else:
+                        console.print(
+                            f"[red]Failed to initialize git repository at {git_repo_path}.[/red]"
+                        )
+                        raise click.Abort()
+                else:
+                    console.print(
+                        f"[red]Setup cancelled. Please provide a valid git repository path.[/red]"
+                    )
+                    raise click.Abort()
 
         # Save profile
         config.set_profile(profile, profile_config)

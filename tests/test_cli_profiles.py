@@ -226,3 +226,127 @@ class TestSetupCommand:
         assert result.exit_code == 0
         assert "Setup cancelled" in result.output
         mock_config.set_profile.assert_not_called()
+
+    @patch("db2repo.cli.GitManager")
+    @patch("db2repo.cli.ConfigManager")
+    @patch("db2repo.cli.click.prompt")
+    @patch("db2repo.cli.click.confirm")
+    def test_setup_git_repo_init(
+        self, mock_confirm, mock_prompt, mock_config_manager, mock_git_manager
+    ):
+        """Test setup initializes a new git repository if not present."""
+        mock_config = MagicMock()
+        mock_config.profile_exists.return_value = False
+        mock_config.get_profile_count.return_value = 0
+        mock_config_manager.return_value = mock_config
+        mock_git_manager.is_git_repository.return_value = False
+        mock_git_manager.initialize_repository.return_value = True
+
+        # Mock all the prompts
+        mock_prompt.side_effect = [
+            "default",  # profile name
+            "snowflake",  # platform
+            "test.snowflakecomputing.com",  # account
+            "testuser",  # username
+            "username_password",  # auth method
+            "password123",  # password
+            "",  # warehouse (empty)
+            "testdb",  # database
+            "public",  # schema
+            "",  # role (empty)
+            "~/ddl-repo",  # git repo path
+            "",  # git remote url
+            "main",  # git branch
+            "Test User",  # git author name
+            "test@example.com",  # git author email
+        ]
+        mock_confirm.side_effect = [True, True]  # Initialize git repo, set as active
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["setup"])
+        assert result.exit_code == 0
+        assert "Initialized new git repository" in result.output
+        mock_git_manager.initialize_repository.assert_called_once()
+
+    @patch("db2repo.cli.GitManager")
+    @patch("db2repo.cli.ConfigManager")
+    @patch("db2repo.cli.click.prompt")
+    @patch("db2repo.cli.click.confirm")
+    def test_setup_git_repo_cancel(
+        self, mock_confirm, mock_prompt, mock_config_manager, mock_git_manager
+    ):
+        """Test setup cancels if user declines to initialize git repo."""
+        mock_config = MagicMock()
+        mock_config.profile_exists.return_value = False
+        mock_config.get_profile_count.return_value = 0
+        mock_config_manager.return_value = mock_config
+        mock_git_manager.is_git_repository.return_value = False
+
+        # Mock all the prompts
+        mock_prompt.side_effect = [
+            "default",  # profile name
+            "snowflake",  # platform
+            "test.snowflakecomputing.com",  # account
+            "testuser",  # username
+            "username_password",  # auth method
+            "password123",  # password
+            "",  # warehouse (empty)
+            "testdb",  # database
+            "public",  # schema
+            "",  # role (empty)
+            "~/ddl-repo",  # git repo path
+            "",  # git remote url
+            "main",  # git branch
+            "Test User",  # git author name
+            "test@example.com",  # git author email
+        ]
+        mock_confirm.side_effect = [False]  # Decline to initialize git repo
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["setup"])
+        assert result.exit_code != 0
+        assert (
+            "Setup cancelled. Please provide a valid git repository path."
+            in result.output
+        )
+        mock_git_manager.initialize_repository.assert_not_called()
+
+    @patch("db2repo.cli.GitManager")
+    @patch("db2repo.cli.ConfigManager")
+    @patch("db2repo.cli.click.prompt")
+    @patch("db2repo.cli.click.confirm")
+    def test_setup_git_repo_with_remote_url(
+        self, mock_confirm, mock_prompt, mock_config_manager, mock_git_manager
+    ):
+        """Test setup aborts if path is not a git repo and remote URL is provided."""
+        mock_config = MagicMock()
+        mock_config.profile_exists.return_value = False
+        mock_config.get_profile_count.return_value = 0
+        mock_config_manager.return_value = mock_config
+        mock_git_manager.is_git_repository.return_value = False
+
+        # Mock all the prompts
+        mock_prompt.side_effect = [
+            "default",  # profile name
+            "snowflake",  # platform
+            "test.snowflakecomputing.com",  # account
+            "testuser",  # username
+            "username_password",  # auth method
+            "password123",  # password
+            "",  # warehouse (empty)
+            "testdb",  # database
+            "public",  # schema
+            "",  # role (empty)
+            "~/ddl-repo",  # git repo path
+            "https://github.com/example/repo.git",  # git remote url
+            "main",  # git branch
+            "Test User",  # git author name
+            "test@example.com",  # git author email
+        ]
+        # No confirmation needed
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["setup"])
+        assert result.exit_code != 0
+        assert "Cloning from remote is not yet implemented" in result.output
+        mock_git_manager.initialize_repository.assert_not_called()

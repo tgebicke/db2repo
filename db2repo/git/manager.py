@@ -6,6 +6,7 @@ This module handles git operations and repository management.
 
 from pathlib import Path
 from typing import Optional
+import subprocess
 
 
 class GitManager:
@@ -18,20 +19,28 @@ class GitManager:
         Args:
             repo_path: Path to the git repository
         """
-        self.repo_path = Path(repo_path)
+        self.repo_path = Path(repo_path).expanduser().resolve()
         # TODO: Initialize GitPython repository object
         # This will be implemented in Story 4.1
 
-    def initialize_repository(self) -> bool:
-        """
-        Initialize a new git repository.
+    @staticmethod
+    def is_git_repository(path: str) -> bool:
+        """Check if the given path is a git repository."""
+        repo_path = Path(path).expanduser().resolve()
+        return (repo_path / ".git").is_dir()
 
-        Returns:
-            True if successful, False otherwise
-        """
-        # TODO: Implement git repository initialization
-        # This will be implemented in Story 4.1
-        raise NotImplementedError("Git repository initialization not yet implemented")
+    @staticmethod
+    def initialize_repository(path: str) -> bool:
+        """Initialize a new git repository at the given path."""
+        repo_path = Path(path).expanduser().resolve()
+        repo_path.mkdir(parents=True, exist_ok=True)
+        try:
+            result = subprocess.run(
+                ["git", "init"], cwd=str(repo_path), capture_output=True, check=True
+            )
+            return result.returncode == 0
+        except Exception:
+            return False
 
     def get_status(self) -> dict:
         """
