@@ -30,7 +30,7 @@ class TestProfileCommands:
         if self.temp_dir and Path(self.temp_dir).exists():
             Path(self.temp_dir).rmdir()
 
-    @patch("db2repo.cli.ConfigManager")
+    @patch("db2repo.config.ConfigManager")
     def test_profiles_list_empty(self, mock_config_manager):
         """Test listing profiles when none exist."""
         mock_config = MagicMock()
@@ -137,8 +137,8 @@ class TestSetupCommand:
         self.runner = CliRunner()
 
     @patch("db2repo.cli.ConfigManager")
-    @patch("db2repo.cli.click.prompt")
-    @patch("db2repo.cli.click.confirm")
+    @patch("click.prompt")
+    @patch("click.confirm")
     def test_setup_new_profile(self, mock_confirm, mock_prompt, mock_config_manager):
         """Test setting up a new profile."""
         mock_config = MagicMock()
@@ -174,8 +174,8 @@ class TestSetupCommand:
         mock_config.set_active_profile.assert_called_once_with("default")
 
     @patch("db2repo.cli.ConfigManager")
-    @patch("db2repo.cli.click.prompt")
-    @patch("db2repo.cli.click.confirm")
+    @patch("click.prompt")
+    @patch("click.confirm")
     def test_setup_existing_profile_update(
         self, mock_confirm, mock_prompt, mock_config_manager
     ):
@@ -212,7 +212,7 @@ class TestSetupCommand:
         assert "Profile 'existing' created and set as active" in result.output
 
     @patch("db2repo.cli.ConfigManager")
-    @patch("db2repo.cli.click.confirm")
+    @patch("click.confirm")
     def test_setup_existing_profile_cancel(self, mock_confirm, mock_config_manager):
         """Test cancelling setup when profile exists."""
         mock_config = MagicMock()
@@ -229,8 +229,8 @@ class TestSetupCommand:
 
     @patch("db2repo.cli.GitManager")
     @patch("db2repo.cli.ConfigManager")
-    @patch("db2repo.cli.click.prompt")
-    @patch("db2repo.cli.click.confirm")
+    @patch("click.prompt")
+    @patch("click.confirm")
     def test_setup_git_repo_init(
         self, mock_confirm, mock_prompt, mock_config_manager, mock_git_manager
     ):
@@ -270,8 +270,8 @@ class TestSetupCommand:
 
     @patch("db2repo.cli.GitManager")
     @patch("db2repo.cli.ConfigManager")
-    @patch("db2repo.cli.click.prompt")
-    @patch("db2repo.cli.click.confirm")
+    @patch("click.prompt")
+    @patch("click.confirm")
     def test_setup_git_repo_cancel(
         self, mock_confirm, mock_prompt, mock_config_manager, mock_git_manager
     ):
@@ -313,8 +313,8 @@ class TestSetupCommand:
 
     @patch("db2repo.cli.GitManager")
     @patch("db2repo.cli.ConfigManager")
-    @patch("db2repo.cli.click.prompt")
-    @patch("db2repo.cli.click.confirm")
+    @patch("click.prompt")
+    @patch("click.confirm")
     def test_setup_git_repo_with_remote_url(
         self, mock_confirm, mock_prompt, mock_config_manager, mock_git_manager
     ):
