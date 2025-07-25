@@ -142,9 +142,68 @@ class SnowflakeAdapter(DatabaseAdapter):
 
     def get_stored_procedures(self, database: str, schema: str) -> List[Dict[str, Any]]:
         """Get DDL for all stored procedures in the specified database and schema."""
-        # TODO: Implement stored procedure DDL extraction with de-stringification
-        # This will be implemented in Story 3.4
-        raise NotImplementedError("Stored procedure DDL extraction not yet implemented")
+        if not self._connection:
+            self.connect()
+        cursor = self._connection.cursor()
+        results = []
+        try:
+            # Get all procedures from information_schema
+            cursor.execute(
+                f"SELECT PROCEDURE_NAME, ARGUMENT_SIGNATURE, PROCEDURE_LANGUAGE, PROCEDURE_DEFINITION, DATA_TYPE FROM {database}.INFORMATION_SCHEMA.PROCEDURES WHERE PROCEDURE_SCHEMA = %s",
+                (schema,),
+            )
+            procs = cursor.fetchall()
+            desc = [d[0].upper() for d in cursor.description]
+            idx_name = desc.index("PROCEDURE_NAME")
+            idx_args = desc.index("ARGUMENT_SIGNATURE")
+            idx_lang = desc.index("PROCEDURE_LANGUAGE")
+            idx_body = desc.index("PROCEDURE_DEFINITION")
+            idx_ret = desc.index("DATA_TYPE")
+            for proc in procs:
+                try:
+                    name = proc[idx_name]
+                    args = proc[idx_args]
+                    lang = proc[idx_lang]
+                    body = proc[idx_body]
+                    ret = proc[idx_ret]
+                    # Reconstruct header
+                    header = f"CREATE OR REPLACE PROCEDURE {database}.{schema}.{name} {args}\nRETURNS {ret}\nLANGUAGE {lang}\nAS"
+                    # For SQL, body is not quoted; for JS/Python, may need $$
+                    if lang.upper() == "SQL":
+                        ddl = f"{header}\n{body.strip()}"
+                    else:
+                        # Use $$ for JS/Python
+                        ddl = f"{header}\n$$\n{body.strip()}\n$$"
+                    results.append(
+                        {
+                            "name": name,
+                            "type": "PROCEDURE",
+                            "database": database,
+                            "schema": schema,
+                            "language": lang,
+                            "ddl": ddl,
+                        }
+                    )
+                except Exception as e:
+                    # Handle malformed or missing fields per-procedure
+                    name = proc[idx_name] if len(proc) > idx_name else None
+                    lang = proc[idx_lang] if len(proc) > idx_lang else None
+                    results.append(
+                        {
+                            "name": name,
+                            "type": "PROCEDURE",
+                            "database": database,
+                            "schema": schema,
+                            "language": lang,
+                            "ddl": None,
+                            "error": str(e),
+                        }
+                    )
+        except Exception as e:
+            raise DatabaseConnectionError(f"Failed to fetch procedures: {e}")
+        finally:
+            cursor.close()
+        return results
 
     def test_connection(self) -> bool:
         """Test the Snowflake database connection."""

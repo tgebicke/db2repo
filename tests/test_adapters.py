@@ -266,3 +266,94 @@ def test_get_object_ddls_handles_query_error(mock_snowflake):
         DatabaseConnectionError, match="Failed to fetch TABLEs: query error"
     ):
         adapter.get_tables("DB", "SCHEMA")
+
+
+@patch("db2repo.adapters.snowflake.snowflake")
+def test_get_stored_procedures_sql(mock_snowflake):
+    adapter = SnowflakeAdapter(make_snowflake_config())
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    adapter._connection = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.description = [
+        ("PROCEDURE_NAME",),
+        ("ARGUMENT_SIGNATURE",),
+        ("PROCEDURE_LANGUAGE",),
+        ("PROCEDURE_DEFINITION",),
+        ("DATA_TYPE",),
+    ]
+    mock_cursor.fetchall.return_value = [
+        ("MYPROC", "(a INT)", "SQL", "BEGIN RETURN a+1; END;", "INT")
+    ]
+    results = adapter.get_stored_procedures("DB", "SCHEMA")
+    assert len(results) == 1
+    ddl = results[0]["ddl"]
+    assert "CREATE OR REPLACE PROCEDURE DB.SCHEMA.MYPROC (a INT)" in ddl
+    assert "RETURNS INT" in ddl
+    assert "LANGUAGE SQL" in ddl
+    assert "BEGIN RETURN a+1; END;" in ddl
+    assert "$$" not in ddl
+
+
+@patch("db2repo.adapters.snowflake.snowflake")
+def test_get_stored_procedures_js_and_python(mock_snowflake):
+    adapter = SnowflakeAdapter(make_snowflake_config())
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    adapter._connection = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.description = [
+        ("PROCEDURE_NAME",),
+        ("ARGUMENT_SIGNATURE",),
+        ("PROCEDURE_LANGUAGE",),
+        ("PROCEDURE_DEFINITION",),
+        ("DATA_TYPE",),
+    ]
+    mock_cursor.fetchall.return_value = [
+        ("MYJS", "(x INT)", "JAVASCRIPT", "return x+1;", "INT"),
+        ("MYPY", "(y INT)", "PYTHON", "return y+1", "INT"),
+    ]
+    results = adapter.get_stored_procedures("DB", "SCHEMA")
+    assert len(results) == 2
+    assert results[0]["language"].upper() == "JAVASCRIPT"
+    assert "$$" in results[0]["ddl"]
+    assert results[1]["language"].upper() == "PYTHON"
+    assert "$$" in results[1]["ddl"]
+
+
+@patch("db2repo.adapters.snowflake.snowflake")
+def test_get_stored_procedures_error_handling(mock_snowflake):
+    adapter = SnowflakeAdapter(make_snowflake_config())
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    adapter._connection = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.description = [
+        ("PROCEDURE_NAME",),
+        ("ARGUMENT_SIGNATURE",),
+        ("PROCEDURE_LANGUAGE",),
+        ("PROCEDURE_DEFINITION",),
+        ("DATA_TYPE",),
+    ]
+    # Malformed tuple (missing DATA_TYPE)
+    mock_cursor.fetchall.return_value = [
+        ("BADPROC", "(z INT)", "SQL", "BEGIN RETURN z; END;")
+    ]
+    results = adapter.get_stored_procedures("DB", "SCHEMA")
+    assert len(results) == 1
+    assert results[0]["ddl"] is None
+    assert "error" in results[0]
+
+
+@patch("db2repo.adapters.snowflake.snowflake")
+def test_get_stored_procedures_query_error(mock_snowflake):
+    adapter = SnowflakeAdapter(make_snowflake_config())
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    adapter._connection = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.execute.side_effect = Exception("query error")
+    with pytest.raises(
+        DatabaseConnectionError, match="Failed to fetch procedures: query error"
+    ):
+        adapter.get_stored_procedures("DB", "SCHEMA")
