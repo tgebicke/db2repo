@@ -72,37 +72,73 @@ class SnowflakeAdapter(DatabaseAdapter):
 
     def get_tables(self, database: str, schema: str) -> List[Dict[str, Any]]:
         """Get DDL for all tables in the specified database and schema."""
-        # TODO: Implement table DDL extraction using SHOW CREATE TABLE
-        # This will be implemented in Story 3.3
-        raise NotImplementedError("Table DDL extraction not yet implemented")
+        return self._get_object_ddls(database, schema, "TABLE")
 
     def get_views(self, database: str, schema: str) -> List[Dict[str, Any]]:
         """Get DDL for all views in the specified database and schema."""
-        # TODO: Implement view DDL extraction using SHOW CREATE VIEW
-        # This will be implemented in Story 3.3
-        raise NotImplementedError("View DDL extraction not yet implemented")
+        return self._get_object_ddls(database, schema, "VIEW")
 
     def get_materialized_views(
         self, database: str, schema: str
     ) -> List[Dict[str, Any]]:
         """Get DDL for all materialized views in the specified database and schema."""
-        # TODO: Implement materialized view DDL extraction
-        # This will be implemented in Story 3.3
-        raise NotImplementedError(
-            "Materialized view DDL extraction not yet implemented"
-        )
+        return self._get_object_ddls(database, schema, "MATERIALIZED VIEW")
 
     def get_stages(self, database: str, schema: str) -> List[Dict[str, Any]]:
         """Get DDL for all stages in the specified database and schema."""
-        # TODO: Implement stage DDL extraction using SHOW CREATE STAGE
-        # This will be implemented in Story 3.3
-        raise NotImplementedError("Stage DDL extraction not yet implemented")
+        return self._get_object_ddls(database, schema, "STAGE")
 
     def get_snowpipes(self, database: str, schema: str) -> List[Dict[str, Any]]:
         """Get DDL for all snow pipes in the specified database and schema."""
-        # TODO: Implement snow pipe DDL extraction using SHOW CREATE PIPE
-        # This will be implemented in Story 3.3
-        raise NotImplementedError("Snow pipe DDL extraction not yet implemented")
+        return self._get_object_ddls(database, schema, "PIPE")
+
+    def _get_object_ddls(
+        self, database: str, schema: str, object_type: str
+    ) -> List[Dict[str, Any]]:
+        """Generic DDL extraction for a given object type."""
+        if not self._connection:
+            self.connect()
+        cursor = self._connection.cursor()
+        results = []
+        try:
+            # Query for object names
+            cursor.execute(f"SHOW {object_type}s IN SCHEMA {database}.{schema}")
+            objects = cursor.fetchall()
+            name_idx = [desc[0].upper() for desc in cursor.description].index("NAME")
+            for obj in objects:
+                obj_name = obj[name_idx]
+                try:
+                    cursor.execute(
+                        f"SHOW CREATE {object_type} {database}.{schema}.{obj_name}"
+                    )
+                    ddl_row = cursor.fetchone()
+                    # DDL is always the last column
+                    ddl = ddl_row[-1] if ddl_row else None
+                    results.append(
+                        {
+                            "name": obj_name,
+                            "type": object_type,
+                            "database": database,
+                            "schema": schema,
+                            "ddl": ddl,
+                        }
+                    )
+                except Exception as e:
+                    results.append(
+                        {
+                            "name": obj_name,
+                            "type": object_type,
+                            "database": database,
+                            "schema": schema,
+                            "ddl": None,
+                            "error": str(e),
+                        }
+                    )
+        except Exception as e:
+            raise DatabaseConnectionError(f"Failed to fetch {object_type}s: {e}")
+        finally:
+            cursor.close()
+        return results
 
     def get_stored_procedures(self, database: str, schema: str) -> List[Dict[str, Any]]:
         """Get DDL for all stored procedures in the specified database and schema."""

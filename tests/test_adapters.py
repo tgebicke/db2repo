@@ -182,3 +182,87 @@ def test_test_connection_failure(mock_snowflake):
     adapter._connection = mock_conn
     with pytest.raises(DatabaseConnectionError, match="Connection test failed"):
         adapter.test_connection()
+
+
+@patch("db2repo.adapters.snowflake.snowflake")
+def test_get_tables_and_error_handling(mock_snowflake):
+    adapter = SnowflakeAdapter(make_snowflake_config())
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    adapter._connection = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+    # Simulate two tables, one with DDL, one with error
+    mock_cursor.description = [("NAME",), ("CREATED_ON",)]
+    mock_cursor.fetchall.return_value = [("T1", "2023-01-01"), ("T2", "2023-01-01")]
+    # First table returns DDL, second raises error
+    def execute_side_effect(sql):
+        if sql.startswith("SHOW CREATE TABLE") and "T2" in sql:
+            raise Exception("DDL error")
+        # Do not change description here
+        # mock_cursor.description = [("CREATED_ON",), ("NAME",), ("TEXT",)]
+
+    mock_cursor.execute.side_effect = execute_side_effect
+    mock_cursor.fetchone.side_effect = [("2023-01-01", "T1", "CREATE TABLE T1 ...")]
+    results = adapter.get_tables("DB", "SCHEMA")
+    assert len(results) == 2
+    assert results[0]["name"] == "T1"
+    assert results[0]["ddl"] == "CREATE TABLE T1 ..."
+    assert results[1]["name"] == "T2"
+    assert results[1]["ddl"] is None
+    assert "error" in results[1]
+
+
+@patch("db2repo.adapters.snowflake.snowflake")
+def test_get_views_and_materialized_views(mock_snowflake):
+    adapter = SnowflakeAdapter(make_snowflake_config())
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    adapter._connection = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.description = [("name",), ("created_on",)]
+    mock_cursor.fetchall.return_value = [("V1", "2023-01-01")]
+    mock_cursor.execute.side_effect = None
+    mock_cursor.fetchone.side_effect = [("2023-01-01", "V1", "CREATE VIEW V1 ...")]
+    # Test get_views
+    results = adapter.get_views("DB", "SCHEMA")
+    assert len(results) == 1
+    assert results[0]["type"] == "VIEW"
+    # Test get_materialized_views
+    results = adapter.get_materialized_views("DB", "SCHEMA")
+    assert len(results) == 1
+    assert results[0]["type"] == "MATERIALIZED VIEW"
+
+
+@patch("db2repo.adapters.snowflake.snowflake")
+def test_get_stages_and_pipes(mock_snowflake):
+    adapter = SnowflakeAdapter(make_snowflake_config())
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    adapter._connection = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.description = [("name",), ("created_on",)]
+    mock_cursor.fetchall.return_value = [("S1", "2023-01-01")]
+    mock_cursor.execute.side_effect = None
+    mock_cursor.fetchone.side_effect = [("2023-01-01", "S1", "CREATE STAGE S1 ...")]
+    # Test get_stages
+    results = adapter.get_stages("DB", "SCHEMA")
+    assert len(results) == 1
+    assert results[0]["type"] == "STAGE"
+    # Test get_snowpipes
+    results = adapter.get_snowpipes("DB", "SCHEMA")
+    assert len(results) == 1
+    assert results[0]["type"] == "PIPE"
+
+
+@patch("db2repo.adapters.snowflake.snowflake")
+def test_get_object_ddls_handles_query_error(mock_snowflake):
+    adapter = SnowflakeAdapter(make_snowflake_config())
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    adapter._connection = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.execute.side_effect = Exception("query error")
+    with pytest.raises(
+        DatabaseConnectionError, match="Failed to fetch TABLEs: query error"
+    ):
+        adapter.get_tables("DB", "SCHEMA")
