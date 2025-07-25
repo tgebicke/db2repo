@@ -196,13 +196,12 @@ def test_get_tables_and_error_handling(mock_snowflake):
     mock_cursor.fetchall.return_value = [("T1", "2023-01-01"), ("T2", "2023-01-01")]
     # First table returns DDL, second raises error
     def execute_side_effect(sql):
-        if sql.startswith("SHOW CREATE TABLE") and "T2" in sql:
+        if sql.startswith("SELECT GET_DDL") and "T2" in sql:
             raise Exception("DDL error")
         # Do not change description here
-        # mock_cursor.description = [("CREATED_ON",), ("NAME",), ("TEXT",)]
 
     mock_cursor.execute.side_effect = execute_side_effect
-    mock_cursor.fetchone.side_effect = [("2023-01-01", "T1", "CREATE TABLE T1 ...")]
+    mock_cursor.fetchone.side_effect = [("CREATE TABLE T1 ...",)]
     results = adapter.get_tables("DB", "SCHEMA")
     assert len(results) == 2
     assert results[0]["name"] == "T1"

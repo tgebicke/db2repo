@@ -108,12 +108,12 @@ class SnowflakeAdapter(DatabaseAdapter):
             for obj in objects:
                 obj_name = obj[name_idx]
                 try:
+                    # Use GET_DDL function instead of SHOW CREATE
                     cursor.execute(
-                        f"SHOW CREATE {object_type} {database}.{schema}.{obj_name}"
+                        f"SELECT GET_DDL('{object_type}', '{database}.{schema}.{obj_name}')"
                     )
                     ddl_row = cursor.fetchone()
-                    # DDL is always the last column
-                    ddl = ddl_row[-1] if ddl_row else None
+                    ddl = ddl_row[0] if ddl_row else None
                     results.append(
                         {
                             "name": obj_name,
