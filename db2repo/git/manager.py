@@ -5,67 +5,67 @@ This module handles git operations and repository management.
 """
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 import subprocess
+from git import Repo, InvalidGitRepositoryError, NoSuchPathError, GitCommandError
 
 
 class GitManager:
     """Manages git operations for DDL repositories."""
 
     def __init__(self, repo_path: str) -> None:
-        """
-        Initialize the git manager.
-
-        Args:
-            repo_path: Path to the git repository
-        """
         self.repo_path = Path(repo_path).expanduser().resolve()
-        # TODO: Initialize GitPython repository object
-        # This will be implemented in Story 4.1
+        try:
+            self.repo = Repo(str(self.repo_path))
+        except (InvalidGitRepositoryError, NoSuchPathError):
+            self.repo = None
 
     @staticmethod
     def is_git_repository(path: str) -> bool:
-        """Check if the given path is a git repository."""
         repo_path = Path(path).expanduser().resolve()
-        return (repo_path / ".git").is_dir()
+        try:
+            _ = Repo(str(repo_path))
+            return True
+        except (InvalidGitRepositoryError, NoSuchPathError):
+            return False
 
     @staticmethod
     def initialize_repository(path: str) -> bool:
-        """Initialize a new git repository at the given path."""
         repo_path = Path(path).expanduser().resolve()
         repo_path.mkdir(parents=True, exist_ok=True)
         try:
-            result = subprocess.run(
-                ["git", "init"], cwd=str(repo_path), capture_output=True, check=True
-            )
-            return result.returncode == 0
+            Repo.init(str(repo_path))
+            return True
         except Exception:
             return False
 
     def get_status(self) -> dict:
-        """
-        Get the current git status.
+        if not self.repo:
+            raise InvalidGitRepositoryError(f"Not a git repository: {self.repo_path}")
+        try:
+            changed = [item.a_path for item in self.repo.index.diff(None)]
+            untracked = self.repo.untracked_files
+            branch = self.repo.active_branch.name if self.repo.head.is_valid() else None
+            return {
+                "changed": changed,
+                "untracked": untracked,
+                "branch": branch,
+                "is_dirty": self.repo.is_dirty(),
+            }
+        except Exception as e:
+            raise GitCommandError(f"Failed to get git status: {e}", 1)
 
-        Returns:
-            Dictionary containing git status information
-        """
-        # TODO: Implement git status checking
-        # This will be implemented in Story 4.1
-        raise NotImplementedError("Git status checking not yet implemented")
-
-    def add_files(self, file_paths: list[str]) -> bool:
-        """
-        Add files to git staging area.
-
-        Args:
-            file_paths: List of file paths to add
-
-        Returns:
-            True if successful, False otherwise
-        """
-        # TODO: Implement git add operation
-        # This will be implemented in Story 4.1
-        raise NotImplementedError("Git add operation not yet implemented")
+    def add_files(self, file_paths: List[str]) -> bool:
+        if not self.repo:
+            raise InvalidGitRepositoryError(f"Not a git repository: {self.repo_path}")
+        try:
+            rel_paths = [
+                str(Path(f).resolve().relative_to(self.repo_path)) for f in file_paths
+            ]
+            self.repo.index.add(rel_paths)
+            return True
+        except Exception as e:
+            raise GitCommandError(f"Failed to add files: {e}", 1)
 
     def commit_changes(
         self,
@@ -73,20 +73,18 @@ class GitManager:
         author_name: Optional[str] = None,
         author_email: Optional[str] = None,
     ) -> bool:
-        """
-        Commit staged changes.
+        if not self.repo:
+            raise InvalidGitRepositoryError(f"Not a git repository: {self.repo_path}")
+        try:
+            author = None
+            if author_name and author_email:
+                from git import Actor
 
-        Args:
-            message: Commit message
-            author_name: Git author name
-            author_email: Git author email
-
-        Returns:
-            True if successful, False otherwise
-        """
-        # TODO: Implement git commit operation
-        # This will be implemented in Story 4.1
-        raise NotImplementedError("Git commit operation not yet implemented")
+                author = Actor(author_name, author_email)
+            self.repo.index.commit(message, author=author)
+            return True
+        except Exception as e:
+            raise GitCommandError(f"Failed to commit changes: {e}", 1)
 
     def push_changes(self, remote: str = "origin", branch: str = "main") -> bool:
         """
