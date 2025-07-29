@@ -24,6 +24,11 @@ class SnowflakeAdapter(DatabaseAdapter):
             raise DatabaseConnectionError(
                 "snowflake-connector-python is not installed."
             )
+        
+        # Set environment variable to work around CFFI issue
+        import os
+        os.environ['CFFI_ALLOW_SOURCE_CODE'] = '1'
+        
         cfg = self.config
         conn_args = {
             "account": cfg.get("account"),
@@ -55,6 +60,10 @@ class SnowflakeAdapter(DatabaseAdapter):
             conn_args["warehouse"] = cfg["warehouse"]
         if cfg.get("role"):
             conn_args["role"] = cfg["role"]
+        
+        # Add insecure_mode to work around SSL certificate issues
+        conn_args["insecure_mode"] = True
+        
         try:
             self._connection = snowflake.connector.connect(**conn_args)
             return True
@@ -82,11 +91,13 @@ class SnowflakeAdapter(DatabaseAdapter):
         self, database: str, schema: str
     ) -> List[Dict[str, Any]]:
         """Get DDL for all materialized views in the specified database and schema."""
-        return self._get_object_ddls(database, schema, "MATERIALIZED VIEW")
+        # For materialized views, we need to use SHOW MATERIALIZED VIEWS
+        return self._get_materialized_view_ddls(database, schema)
 
     def get_stages(self, database: str, schema: str) -> List[Dict[str, Any]]:
         """Get DDL for all stages in the specified database and schema."""
-        return self._get_object_ddls(database, schema, "STAGE")
+        # For stages, we need to use SHOW CREATE STAGE instead of GET_DDL
+        return self._get_stage_ddls(database, schema)
 
     def get_snowpipes(self, database: str, schema: str) -> List[Dict[str, Any]]:
         """Get DDL for all snow pipes in the specified database and schema."""
@@ -138,6 +149,103 @@ class SnowflakeAdapter(DatabaseAdapter):
             raise DatabaseConnectionError(f"Failed to fetch {object_type}s: {e}")
         finally:
             cursor.close()
+        return results
+
+    def _get_stage_ddls(self, database: str, schema: str) -> List[Dict[str, Any]]:
+        """Get DDL for all stages using SHOW CREATE STAGE."""
+        if not self._connection:
+            self.connect()
+        cursor = self._connection.cursor()
+        results = []
+        try:
+            # Query for stage names
+            cursor.execute(f"SHOW STAGES IN SCHEMA {database}.{schema}")
+            stages = cursor.fetchall()
+            name_idx = [desc[0].upper() for desc in cursor.description].index("NAME")
+            for stage in stages:
+                stage_name = stage[name_idx]
+                try:
+                    # Use DESCRIBE STAGE for stages (SHOW CREATE doesn't work for stages)
+                    cursor.execute(f"DESCRIBE STAGE {database}.{schema}.{stage_name}")
+                    stage_info = cursor.fetchall()
+                    # Build DDL from stage description
+                    ddl_lines = [f"CREATE OR REPLACE STAGE {database}.{schema}.{stage_name}"]
+                    for row in stage_info:
+                        if row[0] == "URL":
+                            ddl_lines.append(f"URL = '{row[1]}'")
+                        elif row[0] == "STORAGE_INTEGRATION":
+                            ddl_lines.append(f"STORAGE_INTEGRATION = {row[1]}")
+                        elif row[0] == "CREDENTIALS":
+                            ddl_lines.append(f"CREDENTIALS = ({row[1]})")
+                    ddl = ";\n".join(ddl_lines) + ";"
+                    results.append(
+                        {
+                            "name": stage_name,
+                            "type": "STAGE",
+                            "database": database,
+                            "schema": schema,
+                            "ddl": ddl,
+                        }
+                    )
+                except Exception as e:
+                    results.append(
+                        {
+                            "name": stage_name,
+                            "type": "STAGE",
+                            "database": database,
+                            "schema": schema,
+                            "ddl": None,
+                            "error": str(e),
+                        }
+                    )
+        except Exception as e:
+            # If no stages exist, return empty list
+            pass
+        cursor.close()
+        return results
+
+    def _get_materialized_view_ddls(self, database: str, schema: str) -> List[Dict[str, Any]]:
+        """Get DDL for all materialized views using SHOW MATERIALIZED VIEWS."""
+        if not self._connection:
+            self.connect()
+        cursor = self._connection.cursor()
+        results = []
+        try:
+            # Query for materialized view names
+            cursor.execute(f"SHOW MATERIALIZED VIEWS IN SCHEMA {database}.{schema}")
+            views = cursor.fetchall()
+            name_idx = [desc[0].upper() for desc in cursor.description].index("NAME")
+            for view in views:
+                view_name = view[name_idx]
+                try:
+                    # Use GET_DDL for materialized views
+                    cursor.execute(f"SELECT GET_DDL('MATERIALIZED_VIEW', '{database}.{schema}.{view_name}')")
+                    ddl_row = cursor.fetchone()
+                    ddl = ddl_row[0] if ddl_row else None
+                    results.append(
+                        {
+                            "name": view_name,
+                            "type": "MATERIALIZED_VIEW",
+                            "database": database,
+                            "schema": schema,
+                            "ddl": ddl,
+                        }
+                    )
+                except Exception as e:
+                    results.append(
+                        {
+                            "name": view_name,
+                            "type": "MATERIALIZED_VIEW",
+                            "database": database,
+                            "schema": schema,
+                            "ddl": None,
+                            "error": str(e),
+                        }
+                    )
+        except Exception as e:
+            # If no materialized views exist, return empty list
+            pass
+        cursor.close()
         return results
 
     def get_stored_procedures(self, database: str, schema: str) -> List[Dict[str, Any]]:

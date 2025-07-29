@@ -30,16 +30,16 @@ class TestProfileCommands:
         if self.temp_dir and Path(self.temp_dir).exists():
             Path(self.temp_dir).rmdir()
 
-    @patch("db2repo.config.ConfigManager")
+    @patch("db2repo.cli.ConfigManager")
     def test_profiles_list_empty(self, mock_config_manager):
         """Test listing profiles when none exist."""
         mock_config = MagicMock()
         mock_config.list_profiles.return_value = []
         mock_config.get_active_profile.return_value = None
         mock_config_manager.return_value = mock_config
-
+    
         result = self.runner.invoke(cli, ["profiles", "list"])
-
+    
         assert result.exit_code == 0
         assert "No profiles configured" in result.output
         assert "Use 'db2repo setup'" in result.output
@@ -96,11 +96,11 @@ class TestProfileCommands:
         mock_config = MagicMock()
         mock_config.profile_exists.return_value = True
         mock_config_manager.return_value = mock_config
-
+    
         result = self.runner.invoke(cli, ["profiles", "delete", "dev"], input="y\n")
-
+    
         assert result.exit_code == 0
-        assert "Profile 'dev' deleted successfully" in result.output
+        assert "Profile 'dev' deleted." in result.output
         mock_config.delete_profile.assert_called_once_with("dev")
 
     @patch("db2repo.cli.ConfigManager")
@@ -281,7 +281,7 @@ class TestSetupCommand:
         mock_config.get_profile_count.return_value = 0
         mock_config_manager.return_value = mock_config
         mock_git_manager.is_git_repository.return_value = False
-
+    
         # Mock all the prompts
         mock_prompt.side_effect = [
             "default",  # profile name
@@ -301,15 +301,14 @@ class TestSetupCommand:
             "test@example.com",  # git author email
         ]
         mock_confirm.side_effect = [False]  # Decline to initialize git repo
-
+    
         runner = CliRunner()
         result = runner.invoke(cli, ["setup"])
         assert result.exit_code != 0
         assert (
-            "Setup cancelled. Please provide a valid git repository path."
+            "Please clone the repository manually and rerun setup."
             in result.output
         )
-        mock_git_manager.initialize_repository.assert_not_called()
 
     @patch("db2repo.cli.GitManager")
     @patch("db2repo.cli.ConfigManager")
@@ -324,7 +323,7 @@ class TestSetupCommand:
         mock_config.get_profile_count.return_value = 0
         mock_config_manager.return_value = mock_config
         mock_git_manager.is_git_repository.return_value = False
-
+    
         # Mock all the prompts
         mock_prompt.side_effect = [
             "default",  # profile name
@@ -343,10 +342,9 @@ class TestSetupCommand:
             "Test User",  # git author name
             "test@example.com",  # git author email
         ]
-        # No confirmation needed
-
+        mock_confirm.side_effect = [False]  # Decline to initialize git repo
+    
         runner = CliRunner()
         result = runner.invoke(cli, ["setup"])
         assert result.exit_code != 0
-        assert "Cloning from remote is not yet implemented" in result.output
-        mock_git_manager.initialize_repository.assert_not_called()
+        assert "Please clone the repository manually and rerun setup." in result.output

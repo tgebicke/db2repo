@@ -229,7 +229,7 @@ def test_get_views_and_materialized_views(mock_snowflake):
     # Test get_materialized_views
     results = adapter.get_materialized_views("DB", "SCHEMA")
     assert len(results) == 1
-    assert results[0]["type"] == "MATERIALIZED VIEW"
+    assert results[0]["type"] == "MATERIALIZED_VIEW"
 
 
 @patch("db2repo.adapters.snowflake.snowflake")

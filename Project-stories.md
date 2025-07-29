@@ -58,147 +58,155 @@
 ## Epic 2: Configuration Management
 **Goal:** Implement profile-based configuration system
 
-### Story 2.1: Create Configuration Management Module
+### Story 2.1: Create Configuration Management Module ✅ **COMPLETED**
 **As a** user  
 **I want** to store database connection details securely  
 **So that** I don't have to enter them repeatedly
 
 **Acceptance Criteria:**
-- [ ] Create `config.py` module
-- [ ] Implement TOML configuration file handling
-- [ ] Store config in user home directory (`~/.db2repo.toml`)
-- [ ] Support profile-based configuration structure
-- [ ] Add configuration validation
-- [ ] Handle missing configuration gracefully
+- [x] Create `config.py` module
+- [x] Implement TOML configuration file handling
+- [x] Store config in user home directory (`~/.db2repo.toml`)
+- [x] Support profile-based configuration structure
+- [x] Add configuration validation
+- [x] Handle missing configuration gracefully
 
 **Story Points:** 5  
-**Priority:** High
+**Priority:** High  
+**Status:** ✅ **COMPLETED** - Configuration management with TOML profiles implemented
 
-### Story 2.2: Implement Profile Management Commands
+### Story 2.2: Implement Profile Management Commands ✅ **COMPLETED**
 **As a** user  
 **I want** to manage multiple database profiles  
 **So that** I can work with different environments
 
 **Acceptance Criteria:**
-- [ ] Implement `db2repo profiles` command
-- [ ] Implement `db2repo setup` command (interactive)
-- [ ] Implement `db2repo setup --profile <name>` command
-- [ ] Implement `db2repo use-profile <name>` command
-- [ ] Add profile validation and error handling
-- [ ] Support active profile tracking
+- [x] Implement `db2repo profiles` command
+- [x] Implement `db2repo setup` command (interactive)
+- [x] Implement `db2repo setup --profile <name>` command
+- [x] Implement `db2repo use-profile <name>` command
+- [x] Add profile validation and error handling
+- [x] Support active profile tracking
 
 **Story Points:** 8  
-**Priority:** High
+**Priority:** High  
+**Status:** ✅ **COMPLETED** - Profile management commands implemented with interactive setup
 
-### Story 2.3: Add Git Repository Configuration
+### Story 2.3: Add Git Repository Configuration ✅ **COMPLETED**
 **As a** user  
 **I want** to configure git repository details during setup  
 **So that** the tool knows where to store DDL files
 
 **Acceptance Criteria:**
-- [ ] Add git repository path to profile configuration
-- [ ] Add git remote URL configuration
-- [ ] Add git branch configuration
-- [ ] Add git author name/email configuration
-- [ ] Validate git repository access during setup
-- [ ] Support git repository initialization option
+- [x] Add git repository path to profile configuration
+- [x] Add git remote URL configuration
+- [x] Add git branch configuration
+- [x] Add git author name/email configuration
+- [x] Validate git repository access during setup
+- [x] Support git repository initialization option
 
 **Story Points:** 5  
-**Priority:** High
+**Priority:** High  
+**Status:** ✅ **COMPLETED** - Git repository configuration integrated into setup process
 
 ---
 
 ## Epic 3: Database Adapter Framework
 **Goal:** Create extensible database adapter system
 
-### Story 3.1: Design Database Adapter Interface
+### Story 3.1: Design Database Adapter Interface ✅ **COMPLETED**
 **As a** developer  
 **I want** a common interface for database adapters  
 **So that** I can easily add support for new database platforms
 
 **Acceptance Criteria:**
-- [ ] Create abstract base class `DatabaseAdapter`
-- [ ] Define interface methods for connection management
-- [ ] Define interface methods for DDL extraction
-- [ ] Add type hints and documentation
-- [ ] Create adapter factory pattern
-- [ ] Add adapter registration system
+- [x] Create abstract base class `DatabaseAdapter`
+- [x] Define interface methods for connection management
+- [x] Define interface methods for DDL extraction
+- [x] Add type hints and documentation
+- [x] Create adapter factory pattern
+- [x] Add adapter registration system
 
 **Story Points:** 5  
-**Priority:** High
+**Priority:** High  
+**Status:** ✅ **COMPLETED** - Database adapter interface with factory pattern implemented
 
-### Story 3.2: Implement Snowflake Connection Management
+### Story 3.2: Implement Snowflake Connection Management ✅ **COMPLETED**
 **As a** user  
 **I want** to connect to Snowflake databases  
 **So that** I can extract DDL from Snowflake
 
 **Acceptance Criteria:**
-- [ ] Install snowflake-connector-python
-- [ ] Implement Snowflake connection logic
-- [ ] Support username/password authentication
-- [ ] Support SSH key authentication
-- [ ] Support external browser authentication
-- [ ] Add connection validation and error handling
-- [ ] Implement connection pooling
+- [x] Install snowflake-connector-python
+- [x] Implement Snowflake connection logic
+- [x] Support username/password authentication
+- [x] Support SSH key authentication
+- [x] Support external browser authentication
+- [x] Add connection validation and error handling
+- [x] Implement connection pooling
 
 **Story Points:** 8  
-**Priority:** High
+**Priority:** High  
+**Status:** ✅ **COMPLETED** - Snowflake connection with multiple auth methods and SSL workaround
 
-### Story 3.3: Implement Snowflake DDL Extraction - Basic Objects
+### Story 3.3: Implement Snowflake DDL Extraction - Basic Objects ✅ **COMPLETED**
 **As a** user  
 **I want** to extract DDL for basic Snowflake objects  
 **So that** I can version control my database schema
 
 **Acceptance Criteria:**
-- [ ] Implement table DDL extraction using `SHOW CREATE TABLE`
-- [ ] Implement view DDL extraction using `SHOW CREATE VIEW`
-- [ ] Implement materialized view DDL extraction
-- [ ] Implement stage DDL extraction using `SHOW CREATE STAGE`
-- [ ] Implement snow pipe DDL extraction using `SHOW CREATE PIPE`
-- [ ] Add error handling for missing objects
-- [ ] Add support for multiple schemas
+- [x] Implement table DDL extraction using `GET_DDL`
+- [x] Implement view DDL extraction using `GET_DDL`
+- [x] Implement materialized view DDL extraction using `GET_DDL`
+- [x] Implement stage DDL extraction using `DESCRIBE STAGE`
+- [x] Implement snow pipe DDL extraction using `GET_DDL`
+- [x] Add error handling for missing objects
+- [x] Add support for multiple schemas
 
 **Story Points:** 13  
-**Priority:** High
+**Priority:** High  
+**Status:** ✅ **COMPLETED** - DDL extraction for all basic object types implemented and tested
 
-### Story 3.4: Implement Snowflake Stored Procedure DDL Extraction
+### Story 3.4: Implement Snowflake Stored Procedure DDL Extraction ✅ **COMPLETED**
 **As a** user  
 **I want** to extract readable DDL for stored procedures  
 **So that** I can version control my stored procedures without stringification
 
 **Acceptance Criteria:**
-- [ ] Implement stored procedure header extraction
-- [ ] Implement stored procedure body extraction from INFORMATION_SCHEMA
-- [ ] Implement DDL reconstruction logic
-- [ ] Handle de-stringification of procedure content
-- [ ] Support different procedure languages (SQL, JavaScript, Python)
-- [ ] Add proper formatting for reconstructed DDL
-- [ ] Handle procedure parameters and return types
+- [x] Implement stored procedure header extraction
+- [x] Implement stored procedure body extraction from INFORMATION_SCHEMA
+- [x] Implement DDL reconstruction logic
+- [x] Handle de-stringification of procedure content
+- [x] Support different procedure languages (SQL, JavaScript, Python)
+- [x] Add proper formatting for reconstructed DDL
+- [x] Handle procedure parameters and return types
 
 **Story Points:** 13  
-**Priority:** High
+**Priority:** High  
+**Status:** ✅ **COMPLETED** - Stored procedure DDL reconstruction with de-stringification implemented
 
 ---
 
 ## Epic 4: Git Integration
 **Goal:** Integrate with git for version control
 
-### Story 4.1: Create Git Management Module
+### Story 4.1: Create Git Management Module ✅ **COMPLETED**
 **As a** developer  
 **I want** a module to handle git operations  
 **So that** I can integrate DDL changes with version control
 
 **Acceptance Criteria:**
-- [ ] Install GitPython dependency
-- [ ] Create `git/manager.py` module
-- [ ] Implement git repository initialization
-- [ ] Implement git status checking
-- [ ] Implement git add/commit operations
-- [ ] Add git configuration validation
-- [ ] Handle git authentication issues
+- [x] Install GitPython dependency
+- [x] Create `git/manager.py` module
+- [x] Implement git repository initialization
+- [x] Implement git status checking
+- [x] Implement git add/commit operations
+- [x] Add git configuration validation
+- [x] Handle git authentication issues
 
 **Story Points:** 8  
-**Priority:** High
+**Priority:** High  
+**Status:** ✅ **COMPLETED** - Git management module with repository operations implemented
 
 ### Story 4.2: Implement File Organization System ✅ **COMPLETED**
 **As a** user  
@@ -270,22 +278,23 @@
 **Story Points:** 5  
 **Priority:** High
 
-### Story 5.3: Implement Main Sync Command
+### Story 5.3: Implement Main Sync Command ✅ **COMPLETED**
 **As a** user  
 **I want** to sync DDL from database to repository  
 **So that** I can keep my version control up to date
 
 **Acceptance Criteria:**
-- [ ] Implement `db2repo sync` command
-- [ ] Support `--profile` flag for specific profiles
-- [ ] Support `--dry-run` flag for preview
-- [ ] Support `--commit` flag for auto-commit
-- [ ] Implement incremental sync logic
-- [ ] Add sync progress reporting
-- [ ] Handle sync errors gracefully
+- [x] Implement `db2repo sync` command
+- [x] Support `--profile` flag for specific profiles
+- [x] Support `--dry-run` flag for preview
+- [x] Support `--commit` flag for auto-commit
+- [x] Implement incremental sync logic
+- [x] Add sync progress reporting
+- [x] Handle sync errors gracefully
 
 **Story Points:** 13  
-**Priority:** High
+**Priority:** High  
+**Status:** ✅ **COMPLETED** - Main sync command implemented and tested with Snowflake
 
 ---
 
