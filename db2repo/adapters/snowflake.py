@@ -171,7 +171,7 @@ class SnowflakeAdapter(DatabaseAdapter):
                     cursor.execute(f"DESCRIBE STAGE {database}.{schema}.{stage_name}")
                     stage_info = cursor.fetchall()
                     # Build DDL from stage description
-                    ddl_lines = [f"CREATE OR REPLACE STAGE {database}.{schema}.{stage_name}"]
+                    ddl_lines = [f"CREATE OR REPLACE STAGE {schema}.{stage_name}"]
                     for row in stage_info:
                         if row[0] == "URL":
                             ddl_lines.append(f"URL = '{row[1]}'")
@@ -276,8 +276,8 @@ class SnowflakeAdapter(DatabaseAdapter):
                     lang = proc[idx_lang]
                     body = proc[idx_body]
                     ret = proc[idx_ret]
-                    # Reconstruct header
-                    header = f"CREATE OR REPLACE PROCEDURE {database}.{schema}.{name} {args}\nRETURNS {ret}\nLANGUAGE {lang}\nAS"
+                    # Reconstruct header - use relative schema.object name for portability
+                    header = f"CREATE OR REPLACE PROCEDURE {schema}.{name} {args}\nRETURNS {ret}\nLANGUAGE {lang}\nAS"
                     # For SQL, body is not quoted; for JS/Python, may need $$
                     if lang.upper() == "SQL":
                         ddl = f"{header}\n{body.strip()}"

@@ -451,6 +451,9 @@ def sync(profile: str, dry_run: bool, commit: bool) -> None:
         current_branch = git_manager.get_current_branch()
         database = profile_config.get("database")
         
+        # Store the original database name for file organization
+        original_database = database
+        
         # If we're not on main/master branch, use branch-specific database name
         if current_branch and current_branch not in ["main", "master"]:
             snowflake_branch_name = to_snowflake_name(current_branch)
@@ -517,10 +520,10 @@ def sync(profile: str, dry_run: bool, commit: bool) -> None:
                             console.print(f"[red]No DDL found for {obj['type']} {obj['name']}[/red]")
                             continue
                         
-                        # Determine file path
+                        # Determine file path - always use original database name for file organization
                         file_path = write_ddl_file(
                             base_dir=git_repo_path,
-                            database=database,
+                            database=original_database,
                             schema=schema,
                             object_type=obj["type"],
                             object_name=obj["name"],
