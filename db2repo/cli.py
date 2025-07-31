@@ -446,6 +446,8 @@ def sync(profile: str, dry_run: bool, commit: bool) -> None:
             branch_database = f"{database}_{snowflake_branch_name}"
             console.print(f"[bold blue]Using branch-specific database: {branch_database}[/bold blue]")
             database = branch_database
+            # Update the adapter's configuration to use the branch-specific database
+            profile_config["database"] = database
         else:
             console.print(f"[bold blue]Using main database: {database}[/bold blue]")
         
