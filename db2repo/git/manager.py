@@ -115,3 +115,66 @@ class GitManager:
         # TODO: Implement git pull operation
         # This will be implemented in Story 4.3
         raise NotImplementedError("Git pull operation not yet implemented")
+
+    def get_branches(self) -> List[str]:
+        """
+        Get list of all branches in the repository.
+
+        Returns:
+            List of branch names
+        """
+        if not self.repo:
+            raise InvalidGitRepositoryError(f"Not a git repository: {self.repo_path}")
+        try:
+            branches = [ref.name for ref in self.repo.references if ref.name.startswith('refs/heads/')]
+            return [branch.replace('refs/heads/', '') for branch in branches]
+        except Exception as e:
+            raise GitCommandError(f"Failed to get branches: {e}", 1)
+
+    def create_branch(self, branch_name: str) -> bool:
+        """
+        Create a new branch.
+
+        Args:
+            branch_name: Name of the branch to create
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.repo:
+            raise InvalidGitRepositoryError(f"Not a git repository: {self.repo_path}")
+        try:
+            # Create new branch from current branch
+            new_branch = self.repo.create_head(branch_name)
+            return True
+        except Exception as e:
+            raise GitCommandError(f"Failed to create branch '{branch_name}': {e}", 1)
+
+    def switch_branch(self, branch_name: str) -> bool:
+        """
+        Switch to a different branch.
+
+        Args:
+            branch_name: Name of the branch to switch to
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.repo:
+            raise InvalidGitRepositoryError(f"Not a git repository: {self.repo_path}")
+        try:
+            # Get the branch reference
+            branch_ref = self.repo.heads[branch_name]
+            # Checkout the branch
+            self.repo.heads[branch_name].checkout()
+            return True
+        except Exception as e:
+            raise GitCommandError(f"Failed to switch to branch '{branch_name}': {e}", 1)
+
+    def get_current_branch(self) -> Optional[str]:
+        """Get the current branch name."""
+        try:
+            return self.repo.active_branch.name
+        except Exception:
+            return None
+ 

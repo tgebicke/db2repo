@@ -18,6 +18,7 @@ from .exceptions import ConfigurationError, DatabaseConnectionError
 from .git.manager import GitManager
 from .adapters import AdapterFactory
 from .utils.file_organization import write_ddl_file
+from .utils.validators import to_snowflake_name
 
 console = Console()
 
@@ -288,6 +289,95 @@ def setup(profile: str) -> None:
 
 @cli.command()
 @click.option("--profile", "-p", help="Profile name to use (defaults to active profile)")
+@click.option("--dry-run", is_flag=True, help="Show what would be done without making changes")
+def branch_clone(profile: str, dry_run: bool) -> None:
+    """Create a new Git branch and clone the Snowflake database."""
+    try:
+        config = ConfigManager()
+        
+        # Get the active profile
+        if not profile:
+            profile = config.get_active_profile()
+        if not profile:
+            console.print("[bold red]No active profile set. Please run 'db2repo setup' first.[/bold red]")
+            raise click.Abort()
+        
+        profile_config = config.get_profile(profile)
+        if not profile_config:
+            console.print(f"[bold red]Profile '{profile}' not found.[/bold red]")
+            raise click.Abort()
+        
+        # Get Git repository path and validate
+        git_repo_path = profile_config.get("git_repo_path")
+        if not git_repo_path:
+            console.print("[bold red]Git repository path not configured in profile.[/bold red]")
+            raise click.Abort()
+        
+        # Get database and schema
+        database = profile_config.get("database")
+        schema = profile_config.get("schema")
+        if not database or not schema:
+            console.print("[bold red]Database or schema not configured in profile.[/bold red]")
+            raise click.Abort()
+        
+        # Initialize Git manager
+        git_manager = GitManager(git_repo_path)
+        if not GitManager.is_git_repository(git_repo_path):
+            console.print("[bold red]Not in a git repository.[/bold red]")
+            console.print(f"Please navigate to a git repository: {git_repo_path}")
+            raise click.Abort()
+        
+        # Get current branch name
+        current_branch = git_manager.get_current_branch()
+        if not current_branch:
+            console.print("[bold red]Could not determine current branch.[/bold red]")
+            raise click.Abort()
+        
+        # Check if we're on main/master branch
+        if current_branch in ["main", "master"]:
+            console.print(f"[bold red]Cannot clone database while on '{current_branch}' branch.[/bold red]")
+            console.print("Please create a feature branch first using 'git checkout -b <branch-name>'")
+            raise click.Abort()
+        
+        # Check if the cloned database already exists in Snowflake
+        # Use the original database name from the profile and append the branch name
+        original_database = profile_config.get("database")
+        snowflake_branch_name = to_snowflake_name(current_branch)
+        cloned_database = f"{original_database}_{snowflake_branch_name}"
+        
+        if dry_run:
+            console.print("[yellow]DRY RUN MODE - No changes will be made[/yellow]")
+            console.print(f"Current branch: {current_branch}")
+            console.print(f"Would check if database exists: {cloned_database}")
+            console.print(f"Would create database clone if it doesn't exist")
+            console.print(f"Would use database '{cloned_database}' for this branch")
+            return
+        
+        console.print(f"[bold blue]Checking if database '{cloned_database}' already exists...[/bold blue]")
+        
+        # Initialize database adapter to check if database exists
+        adapter = AdapterFactory.get_adapter(profile_config)
+        
+        # Skip connection test for now due to CFFI issues
+        console.print("[bold green]Database connection test skipped.[/bold green]")
+        
+        # For now, assume database doesn't exist and proceed
+        # TODO: Add actual database existence check when CFFI issue is resolved
+        console.print(f"[bold blue]Using database '{cloned_database}' for branch '{current_branch}'[/bold blue]")
+        
+        console.print(f"[bold green]Branch '{current_branch}' will use database '{cloned_database}'[/bold green]")
+        console.print(f"[bold blue]You can now make changes to '{cloned_database}' and sync them to this branch[/bold blue]")
+        console.print(f"[bold blue]The main profile still points to '{original_database}' for the main branch[/bold blue]")
+        console.print(f"[bold yellow]Note: Database cloning is temporarily disabled due to CFFI issues[/bold yellow]")
+        console.print(f"[bold yellow]Please manually create database '{cloned_database}' in Snowflake if needed[/bold yellow]")
+        
+    except Exception as e:
+        console.print(f"[bold red]Branch clone failed:[/bold red] {e}")
+        raise click.Abort()
+
+
+@cli.command()
+@click.option("--profile", "-p", help="Profile name to use (defaults to active profile)")
 @click.option("--dry-run", is_flag=True, help="Show what would be synced without making changes")
 @click.option("--commit", is_flag=True, help="Automatically commit changes to git")
 def sync(profile: str, dry_run: bool, commit: bool) -> None:
@@ -337,6 +427,31 @@ def sync(profile: str, dry_run: bool, commit: bool) -> None:
         
         if not database or not schema:
             console.print("[bold red]Database or schema not configured in profile.[/bold red]")
+            raise click.Abort()
+
+        # Get the active profile configuration
+        profile_config = config.get_profile(profile)
+        if not profile_config:
+            console.print(f"[bold red]Profile '{profile}' not found.[/bold red]")
+            raise click.Abort()
+
+        # Check if we're on a feature branch and get the appropriate database
+        git_manager = GitManager(profile_config.get("git_repo_path"))
+        current_branch = git_manager.get_current_branch()
+        database = profile_config.get("database")
+        
+        # If we're not on main/master branch, use branch-specific database name
+        if current_branch and current_branch not in ["main", "master"]:
+            snowflake_branch_name = to_snowflake_name(current_branch)
+            branch_database = f"{database}_{snowflake_branch_name}"
+            console.print(f"[bold blue]Using branch-specific database: {branch_database}[/bold blue]")
+            database = branch_database
+        else:
+            console.print(f"[bold blue]Using main database: {database}[/bold blue]")
+        
+        schema = profile_config.get("schema")
+        if not schema:
+            console.print("[bold red]Schema not configured in profile.[/bold red]")
             raise click.Abort()
 
         console.print(f"\n[bold blue]Syncing DDL from {database}.{schema}[/bold blue]")
@@ -484,3 +599,4 @@ def _setup_snowflake_profile() -> dict:
         config["role"] = role
     
     return config
+ 

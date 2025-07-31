@@ -172,3 +172,4 @@ class ConfigManager:
     def get_profile_count(self) -> int:
         """Get the total number of profiles."""
         return len(self.list_profiles())
+ 

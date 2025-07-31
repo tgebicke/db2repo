@@ -348,3 +348,4 @@ class TestSetupCommand:
         result = runner.invoke(cli, ["setup"])
         assert result.exit_code != 0
         assert "Please clone the repository manually and rerun setup." in result.output
+ 

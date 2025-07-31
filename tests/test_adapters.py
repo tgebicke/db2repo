@@ -356,3 +356,4 @@ def test_get_stored_procedures_query_error(mock_snowflake):
         DatabaseConnectionError, match="Failed to fetch procedures: query error"
     ):
         adapter.get_stored_procedures("DB", "SCHEMA")
+ 
