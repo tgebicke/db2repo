@@ -358,18 +358,29 @@ def branch_clone(profile: str, dry_run: bool) -> None:
         # Initialize database adapter to check if database exists
         adapter = AdapterFactory.get_adapter(profile_config)
         
-        # Skip connection test for now due to CFFI issues
-        console.print("[bold green]Database connection test skipped.[/bold green]")
-        
-        # For now, assume database doesn't exist and proceed
-        # TODO: Add actual database existence check when CFFI issue is resolved
-        console.print(f"[bold blue]Using database '{cloned_database}' for branch '{current_branch}'[/bold blue]")
+        # Test connection and attempt to clone database
+        console.print("[bold blue]Testing database connection...[/bold blue]")
+        try:
+            if adapter.test_connection():
+                console.print("[bold green]Database connection successful.[/bold green]")
+                
+                # Attempt to clone the database
+                console.print(f"[bold blue]Attempting to clone database '{original_database}' to '{cloned_database}'...[/bold blue]")
+                if adapter.clone_database(original_database, cloned_database):
+                    console.print(f"[bold green]Successfully cloned database to '{cloned_database}'[/bold green]")
+                else:
+                    console.print(f"[bold yellow]Database cloning failed or database already exists.[/bold yellow]")
+                    console.print(f"[bold yellow]You may need to manually create database '{cloned_database}' in Snowflake.[/bold yellow]")
+            else:
+                console.print("[bold red]Database connection failed.[/bold red]")
+                console.print(f"[bold yellow]Please ensure you can connect to Snowflake and manually create database '{cloned_database}' if needed.[/bold yellow]")
+        except Exception as e:
+            console.print(f"[bold red]Database connection error:[/bold red] {e}")
+            console.print(f"[bold yellow]Please manually create database '{cloned_database}' in Snowflake if needed.[/bold yellow]")
         
         console.print(f"[bold green]Branch '{current_branch}' will use database '{cloned_database}'[/bold green]")
         console.print(f"[bold blue]You can now make changes to '{cloned_database}' and sync them to this branch[/bold blue]")
         console.print(f"[bold blue]The main profile still points to '{original_database}' for the main branch[/bold blue]")
-        console.print(f"[bold yellow]Note: Database cloning is temporarily disabled due to CFFI issues[/bold yellow]")
-        console.print(f"[bold yellow]Please manually create database '{cloned_database}' in Snowflake if needed[/bold yellow]")
         
     except Exception as e:
         console.print(f"[bold red]Branch clone failed:[/bold red] {e}")
